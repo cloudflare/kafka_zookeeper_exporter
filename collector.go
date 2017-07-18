@@ -55,7 +55,7 @@ func newCollector(target string, chroot string, topics []string) *collector {
 			partitionReplicaCount: prometheus.NewDesc(
 				"kafka_topic_partition_replica_count",
 				"Total number of replicas for this topic",
-				[]string{"topic", "partition"},
+				[]string{"topic"},
 				prometheus.Labels{},
 			),
 			partitionISR: prometheus.NewDesc(

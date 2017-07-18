@@ -30,6 +30,9 @@ func (c *collector) topicMetrics(ch chan<- prometheus.Metric, topic *kazoo.Topic
 
 // called from topicMetrics() to extract per partition metrics
 func (c *collector) partitionMetrics(ch chan<- prometheus.Metric, topic *kazoo.Topic, partition *kazoo.Partition) {
+	// kafka_topic_partition_replica_count{topic="name"} 2
+	ch <- prometheus.MustNewConstMetric(c.metrics.partitionReplicaCount, prometheus.GaugeValue, float64(len(partition.Replicas)), topic.Name)
+
 	leader, err := partition.Leader()
 	if err != nil {
 		msg := fmt.Sprintf("Error fetching partition leader for partition %d on topic '%s': %s", partition.ID, topic.Name, err)
@@ -37,7 +40,7 @@ func (c *collector) partitionMetrics(ch chan<- prometheus.Metric, topic *kazoo.T
 		ch <- prometheus.NewInvalidMetric(c.metrics.partitionLeader, errors.New(msg))
 		return
 	}
-	// kafka_topic_partition_leader_is_preferred{topic="name", partition="1", leader="10001"} 1
+	// kafka_topic_partition_leader_is_preferred{topic="name", partition="1", replica="10001"} 1
 	ch <- prometheus.MustNewConstMetric(c.metrics.partitionLeader, prometheus.GaugeValue, 1, topic.Name, fmt.Sprint(partition.ID), fmt.Sprint(leader))
 
 	isr, err := partition.ISR()
@@ -55,9 +58,6 @@ func (c *collector) partitionMetrics(ch chan<- prometheus.Metric, topic *kazoo.T
 		// kafka_topic_partition_replica_in_sync{topic="name", partition="1", replica="10002"} 0
 		ch <- prometheus.MustNewConstMetric(c.metrics.partitionISR, prometheus.GaugeValue, inSync, topic.Name, fmt.Sprint(partition.ID), fmt.Sprint(replica))
 	}
-
-	// kafka_topic_partition_replica_count{topic="name", partition="1"} 2
-	ch <- prometheus.MustNewConstMetric(c.metrics.partitionReplicaCount, prometheus.GaugeValue, float64(len(partition.Replicas)), topic.Name, fmt.Sprint(partition.ID))
 
 	preferred := partition.PreferredReplica()
 	var isPreferred float64
