@@ -20,7 +20,7 @@ To see the list of avaiable flags run
 
 Send a request to collect metrics
 
-    curl localhost:8080/kafka?target=10.0.0.1:2181&chroot=/kafka/cluster&topics=mytopic1,mytopic2
+    curl localhost:9381/kafka?target=10.0.0.1:2181&chroot=/kafka/cluster&topics=mytopic1,mytopic2
 
 Where:
 
