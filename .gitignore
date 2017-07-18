@@ -1,1 +1,2 @@
-kafka-zookeeper-exporter
+kafka_zookeeper_exporter
+.build

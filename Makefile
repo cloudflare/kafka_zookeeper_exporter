@@ -1,4 +1,4 @@
-NAME    := kafka-zookeeper-exporter
+NAME    := kafka_zookeeper_exporter
 VERSION := $(shell git describe --tags --always --dirty='-dev')
 
 .PHONY: build
@@ -17,9 +17,20 @@ test: lint
 lint:
 	golint ./... | (egrep -v ^vendor/ || true)
 
+.build/dep.ok:
+	go install github.com/golang/dep/cmd/dep
+	@mkdir -p .build
+	touch $@
+
 .PHONY: vendor
-vendor:
-	govendor fetch +m +e +v
+vendor: .build/dep.ok
+	dep ensure
+	dep prune
+
+.PHONY: vendor-update
+vendor-update: .build/dep.ok
+	dep ensure -update
+	dep prune
 
 .PHONY: all
 all: lint test build
