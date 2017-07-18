@@ -1,9 +1,13 @@
 NAME    := kafka_zookeeper_exporter
 VERSION := $(shell git describe --tags --always --dirty='-dev')
 
-.PHONY: build
-build:
+SOURCES := $(wildcard *.go) $(wildcard */*.go)
+
+$(NAME): $(SOURCES)
 	go build -ldflags "-X main.version=$(shell git describe --tags --always --dirty=-dev)"
+
+.PHONY: build
+build: $(NAME)
 
 .PHONY: build-docker
 build-docker:
