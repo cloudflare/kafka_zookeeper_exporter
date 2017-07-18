@@ -24,7 +24,7 @@ const (
 var (
 	version = "unknown"
 
-	listenAddress = flag.String("web.listen-address", ":8080", "Address to listen on for web interface and telemetry.")
+	listenAddress = flag.String("web.listen-address", ":9381", "Address to listen on for web interface and telemetry.")
 	serverTimeout = flag.Duration("web.timeout", 60*time.Second, "Timeout for responding to HTTP requests.")
 	zkTimeout     = flag.Duration("zk.timeout", 5*time.Second, "Timeout for ZooKeeper requests")
 	showVersion   = flag.Bool("version", false, "Show version and exit")

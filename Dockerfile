@@ -9,6 +9,6 @@ RUN go install \
     github.com/cloudflare/kafka-zookeeper-exporter && \
     rm -fr /go/src
 
-EXPOSE 8080
+EXPOSE 9381
 
 CMD ["kafka-zookeeper-exporter"]
