@@ -55,7 +55,7 @@ func newCollector(target string, chroot string, topics []string) *collector {
 			partitionReplicaCount: prometheus.NewDesc(
 				"kafka_topic_partition_replica_count",
 				"Total number of replicas for this topic",
-				[]string{"topic"},
+				[]string{"topic", "partition"},
 				prometheus.Labels{},
 			),
 			partitionISR: prometheus.NewDesc(
@@ -100,6 +100,9 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("zookeeper_topic_list_error", msg, nil, nil), err)
 		return
 	}
+
+	// kafka_zookeeper_up{} 1
+	ch <- prometheus.MustNewConstMetric(c.metrics.kafkaUp, prometheus.GaugeValue, 1)
 
 	for _, topic := range topics {
 		if len(c.topics) > 0 && !stringInSlice(topic.Name, c.topics) {
