@@ -31,9 +31,9 @@ var (
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	target := r.URL.Query().Get("target")
-	if target == "" {
-		http.Error(w, "'target' parameter must be specified", 400)
+	zookeeper := r.URL.Query().Get("zookeeper")
+	if zookeeper == "" {
+		http.Error(w, "'zookeeper' parameter must be specified", 400)
 		return
 	}
 
@@ -46,7 +46,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(newCollector(target, chroot, topics))
+	registry.MustRegister(newCollector(zookeeper, chroot, topics))
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
@@ -73,7 +73,7 @@ func main() {
 		<head><title>Kafka ZooKeeper Exporter</title></head>
 		<body>
 		<p><a href='` + metricsRoute + `'>Metrics</a></p>
-		<p><a href='` + probeRoute + `?target=zookeeper1.local:2181&chroot=/path'>Example Kafka ZooKeeper probe</a></p>
+		<p><a href='` + probeRoute + `?zookeeper=zookeeper1.local:2181&chroot=/path'>Example Kafka ZooKeeper probe</a></p>
 		</body>
 		</html>
 		`))
