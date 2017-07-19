@@ -20,10 +20,10 @@ To see the list of avaiable flags run
 
 Send a request to collect metrics
 
-    curl localhost:9381/kafka?target=10.0.0.1:2181&chroot=/kafka/cluster&topics=mytopic1,mytopic2
+    curl localhost:9381/kafka?zookeeper=10.0.0.1:2181&chroot=/kafka/cluster&topics=mytopic1,mytopic2
 
 Where:
 
-* target - address of the ZooKeeper used for Kafka, can be multiple addresses separated by comma
+* zookeeper - address of the ZooKeeper used for Kafka, can be multiple addresses separated by comma
 * chroot - path inside ZooKeeper where Kafka cluster data is stored
 * topics - optional, list of topics to collect metrics for, if empty or missing then all topics will be collected

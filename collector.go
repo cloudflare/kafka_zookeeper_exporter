@@ -12,6 +12,7 @@ import (
 )
 
 type zkMetrics struct {
+	kafkaUp                       *prometheus.Desc
 	topicPartitions               *prometheus.Desc
 	partitionUsesPreferredReplica *prometheus.Desc
 	partitionLeader               *prometheus.Desc
@@ -20,55 +21,66 @@ type zkMetrics struct {
 }
 
 type collector struct {
-	target  string
-	chroot  string
-	topics  []string
-	timeout time.Duration
-	metrics zkMetrics
+	zookeeper string
+	chroot    string
+	topics    []string
+	timeout   time.Duration
+	metrics   zkMetrics
 }
 
-func newCollector(target string, chroot string, topics []string) *collector {
+func newCollector(zookeeper string, chroot string, topics []string) *collector {
+	staticLabels := prometheus.Labels{
+		"zookeeper": zookeeper,
+		"chroot":    chroot,
+	}
 	return &collector{
-		target:  target,
-		chroot:  chroot,
-		topics:  topics,
-		timeout: *zkTimeout,
+		zookeeper: zookeeper,
+		chroot:    chroot,
+		topics:    topics,
+		timeout:   *zkTimeout,
 		metrics: zkMetrics{
+			kafkaUp: prometheus.NewDesc(
+				"kafka_zookeeper_up",
+				"1 if we were able to connect to ZooKeeper",
+				[]string{},
+				staticLabels,
+			),
 			topicPartitions: prometheus.NewDesc(
 				"kafka_topic_partition_count",
 				"Number of partitions on this topic",
 				[]string{"topic"},
-				prometheus.Labels{},
+				staticLabels,
 			),
 			partitionUsesPreferredReplica: prometheus.NewDesc(
 				"kafka_topic_partition_leader_is_preferred",
 				"1 if partition is using the preferred broker",
 				[]string{"topic", "partition"},
-				prometheus.Labels{},
+				staticLabels,
 			),
 			partitionLeader: prometheus.NewDesc(
 				"kafka_topic_partition_leader",
 				"1 if the node is the leader of this partition",
 				[]string{"topic", "partition", "replica"},
-				prometheus.Labels{},
+				staticLabels,
 			),
 			partitionReplicaCount: prometheus.NewDesc(
 				"kafka_topic_partition_replica_count",
 				"Total number of replicas for this topic",
 				[]string{"topic", "partition"},
-				prometheus.Labels{},
+				staticLabels,
 			),
 			partitionISR: prometheus.NewDesc(
 				"kafka_topic_partition_replica_in_sync",
 				"1 if replica is in sync",
 				[]string{"topic", "partition", "replica"},
-				prometheus.Labels{},
+				staticLabels,
 			),
 		},
 	}
 }
 
 func (c *collector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- c.metrics.kafkaUp
 	ch <- c.metrics.topicPartitions
 	ch <- c.metrics.partitionUsesPreferredReplica
 	ch <- c.metrics.partitionLeader
@@ -82,8 +94,8 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		Timeout: c.timeout,
 	}
 
-	log.Debugf("Connecting to %s, chroot=%s timeout=%s", c.target, config.Chroot, config.Timeout)
-	client, err := kazoo.NewKazoo(strings.Split(c.target, ","), &config)
+	log.Debugf("Connecting to %s, chroot=%s timeout=%s", c.zookeeper, config.Chroot, config.Timeout)
+	client, err := kazoo.NewKazoo(strings.Split(c.zookeeper, ","), &config)
 	if err != nil {
 		msg := fmt.Sprintf("Connection error: %s", err)
 		log.Error(msg)
