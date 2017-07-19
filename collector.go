@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -116,12 +117,18 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	// kafka_zookeeper_up{} 1
 	ch <- prometheus.MustNewConstMetric(c.metrics.kafkaUp, prometheus.GaugeValue, 1)
 
+	wg := sync.WaitGroup{}
+	wg.Add(len(topics))
 	for _, topic := range topics {
-		if len(c.topics) > 0 && !stringInSlice(topic.Name, c.topics) {
-			// skip topic if it's not on the list of topic to collect
-			log.Debugf("Skipping topic '%s', not in list: %s [%d]", topic.Name, c.topics, len(c.topics))
-			continue
-		}
-		c.topicMetrics(ch, topic)
+		go func(cl *collector, cz chan<- prometheus.Metric, t *kazoo.Topic) {
+			defer wg.Done()
+			if len(cl.topics) > 0 && !stringInSlice(t.Name, cl.topics) {
+				// skip topic if it's not on the list of topic to collect
+				log.Debugf("Skipping topic '%s', not in list: %s [%d]", t.Name, cl.topics, len(cl.topics))
+				return
+			}
+			c.topicMetrics(ch, t)
+		}(c, ch, topic)
 	}
+	wg.Wait()
 }
