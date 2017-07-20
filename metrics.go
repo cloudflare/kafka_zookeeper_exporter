@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -26,9 +27,15 @@ func (c *collector) topicMetrics(ch chan<- prometheus.Metric, topic *kazoo.Topic
 		topic.Name,
 	)
 
+	wg := sync.WaitGroup{}
+	wg.Add(len(partitions))
 	for _, partition := range partitions {
-		c.partitionMetrics(ch, topic, partition)
+		go func(cz chan<- prometheus.Metric, t *kazoo.Topic, p *kazoo.Partition) {
+			c.partitionMetrics(cz, t, p)
+			wg.Done()
+		}(ch, topic, partition)
 	}
+	wg.Wait()
 
 }
 
