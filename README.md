@@ -24,6 +24,6 @@ Send a request to collect metrics
 
 Where:
 
-* zookeeper - address of the ZooKeeper used for Kafka, can be multiple addresses separated by comma
-* chroot - path inside ZooKeeper where Kafka cluster data is stored
+* zookeeper - required, address of the ZooKeeper used for Kafka, can be multiple addresses separated by comma
+* chroot - required, path inside ZooKeeper where Kafka cluster data is stored
 * topics - optional, list of topics to collect metrics for, if empty or missing then all topics will be collected
