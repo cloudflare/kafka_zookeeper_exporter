@@ -13,7 +13,6 @@ import (
 )
 
 type zkMetrics struct {
-	kafkaUp                       *prometheus.Desc
 	topicPartitions               *prometheus.Desc
 	partitionUsesPreferredReplica *prometheus.Desc
 	partitionLeader               *prometheus.Desc
@@ -40,12 +39,6 @@ func newCollector(zookeeper string, chroot string, topics []string) *collector {
 		topics:    topics,
 		timeout:   *zkTimeout,
 		metrics: zkMetrics{
-			kafkaUp: prometheus.NewDesc(
-				"kafka_zookeeper_up",
-				"1 if we were able to connect to ZooKeeper",
-				[]string{},
-				staticLabels,
-			),
 			topicPartitions: prometheus.NewDesc(
 				"kafka_topic_partition_count",
 				"Number of partitions on this topic",
@@ -81,7 +74,6 @@ func newCollector(zookeeper string, chroot string, topics []string) *collector {
 }
 
 func (c *collector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.metrics.kafkaUp
 	ch <- c.metrics.topicPartitions
 	ch <- c.metrics.partitionUsesPreferredReplica
 	ch <- c.metrics.partitionLeader
@@ -113,9 +105,6 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("zookeeper_topic_list_error", msg, nil, nil), err)
 		return
 	}
-
-	// kafka_zookeeper_up{} 1
-	ch <- prometheus.MustNewConstMetric(c.metrics.kafkaUp, prometheus.GaugeValue, 1)
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(topics))
