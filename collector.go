@@ -29,10 +29,6 @@ type collector struct {
 }
 
 func newCollector(zookeeper string, chroot string, topics []string) *collector {
-	staticLabels := prometheus.Labels{
-		"zookeeper": zookeeper,
-		"chroot":    chroot,
-	}
 	return &collector{
 		zookeeper: zookeeper,
 		chroot:    chroot,
@@ -43,31 +39,31 @@ func newCollector(zookeeper string, chroot string, topics []string) *collector {
 				"kafka_topic_partition_count",
 				"Number of partitions on this topic",
 				[]string{"topic"},
-				staticLabels,
+				prometheus.Labels{},
 			),
 			partitionUsesPreferredReplica: prometheus.NewDesc(
 				"kafka_topic_partition_leader_is_preferred",
 				"1 if partition is using the preferred broker",
 				[]string{"topic", "partition"},
-				staticLabels,
+				prometheus.Labels{},
 			),
 			partitionLeader: prometheus.NewDesc(
 				"kafka_topic_partition_leader",
 				"1 if the node is the leader of this partition",
 				[]string{"topic", "partition", "replica"},
-				staticLabels,
+				prometheus.Labels{},
 			),
 			partitionReplicaCount: prometheus.NewDesc(
 				"kafka_topic_partition_replica_count",
 				"Total number of replicas for this topic",
 				[]string{"topic", "partition"},
-				staticLabels,
+				prometheus.Labels{},
 			),
 			partitionISR: prometheus.NewDesc(
 				"kafka_topic_partition_replica_in_sync",
 				"1 if replica is in sync",
 				[]string{"topic", "partition", "replica"},
-				staticLabels,
+				prometheus.Labels{},
 			),
 		},
 	}
