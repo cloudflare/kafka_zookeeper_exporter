@@ -2,6 +2,43 @@
 
 A daemon that exposes Kafka cluster state stored in [ZooKeeper](https://kafka.apache.org/documentation/#zk).
 
+## Motivation
+
+Metrics exported by `kafka_zookeeper_exporter` provide cluster level overview
+of the entire cluster and can be used along
+[jmx_exporter](https://github.com/prometheus/jmx_exporter) which provides broker
+level data. `jmx_exporter` exports what each brokers believes to be true, but
+this information can be incorrect in case of a network partition or other split
+brain issues. ZooKeeper on the other hand is the source of truth for the entire
+cluster configuration and runtime status, so the metrics exported from it are
+the best representation of the entire cluster status.
+
+## Metrics
+
+### kafka_topic_partition_count
+
+Number of partitions configured for given topic.
+
+### kafka_topic_partition_replica_count
+
+Number of replicas configured for given topic.
+
+### kafka_topic_partition_leader
+
+This metric will have value `1` for the replica that is currently the leader for
+given partition.
+
+### kafka_topic_partition_leader_is_preferred
+
+Each Kafka partition have a list of replicas, the first replica is the preferred
+(default) leader. This metric will have value `1` if the current partition
+leader is the preferred one.
+
+### kafka_topic_partition_replica_in_sync
+
+This metric will indicate whenever given replica is in sync with the partition
+leader.
+
 ## Building
 
     go get -u github.com/cloudflare/kafka_zookeeper_exporter
