@@ -64,3 +64,22 @@ Where:
 * zookeeper - required, address of the ZooKeeper used for Kafka, can be multiple addresses separated by comma
 * chroot - required, path inside ZooKeeper where Kafka cluster data is stored
 * topics - optional, list of topics to collect metrics for, if empty or missing then all topics will be collected
+
+## Prometheus configuration
+
+Example Prometheus scrape job configuration:
+
+    - job_name: kafka_zookeeper_exporter_mycluster
+      static_configs:
+        - targets:
+          # hostname and port `kafka-zookeeper-exporter` is listening on
+          - myserver:9381
+      metrics_path: /kafka
+      scheme: http
+      params:
+        zookeeper: ['zk1.example.com:2181,zk2.example.com:2181']
+        chroot: ['/kafka/mycluster']
+
+This example uses `static_configs` to configure scrape target.
+See [Prometheus docs](https://prometheus.io/docs/operating/configuration/) for other
+ways to configure it.
