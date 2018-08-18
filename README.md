@@ -49,11 +49,11 @@ leader.
 
 Start the exporter
 
-    ./kafka-zookeeper-exporter <flags>
+    ./kafka_zookeeper_exporter <flags>
 
 To see the list of avaiable flags run
 
-    ./kafka-zookeeper-exporter -h
+    ./kafka_zookeeper_exporter -h
 
 Send a request to collect metrics
 
