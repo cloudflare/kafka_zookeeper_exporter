@@ -62,7 +62,7 @@ Send a request to collect metrics
 Where:
 
 * zookeeper - required, address of the ZooKeeper used for Kafka, can be multiple addresses separated by comma
-* chroot - required, path inside ZooKeeper where Kafka cluster data is stored
+* chroot - path inside ZooKeeper where Kafka cluster data is stored. Has to be omitted if Kafka resides in the root of ZooKeeper.
 * topics - optional, list of topics to collect metrics for, if empty or missing then all topics will be collected
 
 ## Prometheus configuration
