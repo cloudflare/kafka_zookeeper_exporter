@@ -39,6 +39,11 @@ leader is the preferred one.
 This metric will indicate whenever given replica is in sync with the partition
 leader.
 
+### kafka_broker_is_controller
+
+This metric will have value `1` for the broker that is currently the cluster
+controller.
+
 ## Building
 
     go get -u github.com/cloudflare/kafka_zookeeper_exporter
