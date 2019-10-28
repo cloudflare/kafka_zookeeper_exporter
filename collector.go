@@ -18,6 +18,7 @@ type zkMetrics struct {
 	partitionLeader               *prometheus.Desc
 	partitionReplicaCount         *prometheus.Desc
 	partitionISR                  *prometheus.Desc
+	controller                    *prometheus.Desc
 }
 
 type collector struct {
@@ -65,6 +66,12 @@ func newCollector(zookeeper string, chroot string, topics []string) *collector {
 				[]string{"topic", "partition", "replica"},
 				prometheus.Labels{},
 			),
+			controller: prometheus.NewDesc(
+				"kafka_broker_is_controller",
+				"1 if the broker is the controller of this cluster",
+				[]string{"broker"},
+				prometheus.Labels{},
+			),
 		},
 	}
 }
@@ -75,6 +82,7 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.metrics.partitionLeader
 	ch <- c.metrics.partitionReplicaCount
 	ch <- c.metrics.partitionISR
+	ch <- c.metrics.controller
 }
 
 func (c *collector) Collect(ch chan<- prometheus.Metric) {
@@ -93,6 +101,8 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	defer client.Close()
+
+	c.clusterMetrics(ch, client)
 
 	topics, err := client.Topics()
 	if err != nil {

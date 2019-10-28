@@ -11,6 +11,23 @@ import (
 	kazoo "github.com/wvanbergen/kazoo-go"
 )
 
+func (c *collector) clusterMetrics(ch chan<- prometheus.Metric, client *kazoo.Kazoo) {
+	controller, err := client.Controller()
+	if err != nil {
+		msg := fmt.Sprintf("Error collecting cluster controller broker ID: %s", err)
+		log.Error(msg)
+		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("zookeeper_controller_id_error", msg, nil, nil), err)
+		return
+	}
+
+	// kafka_broker_is_controller{broker="123"} 1
+	ch <- prometheus.MustNewConstMetric(
+		c.metrics.controller,
+		prometheus.GaugeValue, 1,
+		fmt.Sprint(controller),
+	)
+}
+
 func (c *collector) topicMetrics(ch chan<- prometheus.Metric, topic *kazoo.Topic) {
 	// per partition metrics
 	partitions, err := topic.Partitions()
