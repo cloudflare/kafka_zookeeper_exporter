@@ -19,21 +19,24 @@ type zkMetrics struct {
 	partitionReplicaCount         *prometheus.Desc
 	partitionISR                  *prometheus.Desc
 	controller                    *prometheus.Desc
+	consumersOffsets              *prometheus.Desc
 }
 
 type collector struct {
 	zookeeper string
 	chroot    string
 	topics    []string
+	consumers []string
 	timeout   time.Duration
 	metrics   zkMetrics
 }
 
-func newCollector(zookeeper string, chroot string, topics []string) *collector {
+func newCollector(zookeeper string, chroot string, topics []string, consumers []string) *collector {
 	return &collector{
 		zookeeper: zookeeper,
 		chroot:    chroot,
 		topics:    topics,
+		consumers: consumers,
 		timeout:   *zkTimeout,
 		metrics: zkMetrics{
 			topicPartitions: prometheus.NewDesc(
@@ -72,6 +75,12 @@ func newCollector(zookeeper string, chroot string, topics []string) *collector {
 				[]string{"broker"},
 				prometheus.Labels{},
 			),
+			consumersOffsets: prometheus.NewDesc(
+				"kafka_consumers_offsets",
+				"Last offset consumed",
+				[]string{"consumer", "topic", "partition"},
+				prometheus.Labels{},
+			),
 		},
 	}
 }
@@ -83,6 +92,7 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.metrics.partitionReplicaCount
 	ch <- c.metrics.partitionISR
 	ch <- c.metrics.controller
+	ch <- c.metrics.consumersOffsets
 }
 
 func (c *collector) Collect(ch chan<- prometheus.Metric) {
@@ -112,6 +122,14 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
+	consumers, err := client.Consumergroups()
+	if err != nil {
+		msg := fmt.Sprintf("Error collecting list of consumers: %s", err)
+		log.Error(msg)
+		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("zookeeper_consumer_list_error", msg, nil, nil), err)
+		return
+	}
+
 	wg := sync.WaitGroup{}
 	wg.Add(len(topics))
 	for _, topic := range topics {
@@ -124,6 +142,19 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 			}
 			c.topicMetrics(ch, t)
 		}(c, ch, topic)
+	}
+
+	wg.Add(len(consumers))
+	for _, consumer := range consumers {
+		go func(cl *collector, cz chan<- prometheus.Metric, cg *kazoo.Consumergroup) {
+			defer wg.Done()
+			if len(cl.consumers) > 0 && !stringInSlice(cg.Name, cl.consumers) {
+				// skip consumer if it's not on the list of consumers to collect
+				log.Debugf("Skipping consumer '%s', not in list: %s [%d]", cg.Name, cl.consumers, len(cl.consumers))
+				return
+			}
+			c.consumerMetrics(ch, cg)
+		}(c, ch, consumer)
 	}
 	wg.Wait()
 }

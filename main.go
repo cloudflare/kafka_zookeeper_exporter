@@ -45,8 +45,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		topics = strings.Split(topic, ",")
 	}
 
+	consumer := r.URL.Query().Get("consumer")
+	consumers := []string{}
+	if consumer != "" {
+		consumers = strings.Split(consumer, ",")
+	}
+
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(newCollector(zookeeper, chroot, topics))
+	registry.MustRegister(newCollector(zookeeper, chroot, topics, consumers))
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)

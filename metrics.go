@@ -111,3 +111,30 @@ func (c *collector) partitionMetrics(ch chan<- prometheus.Metric, topic *kazoo.T
 		topic.Name, fmt.Sprint(partition.ID),
 	)
 }
+
+func (c *collector) consumerMetrics(ch chan<- prometheus.Metric, consumer *kazoo.Consumergroup) {
+	offsets, err := consumer.FetchAllOffsets()
+	if err != nil {
+		msg := fmt.Sprintf("Error collecting offset for consumer %s: %s", consumer.Name, err)
+		log.Errorf(msg)
+		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("zookeeper_consumer_offsets_error", msg, nil, nil), err)
+		return
+	}
+
+	for topicName, topicParts := range offsets {
+		// Don't emit metrics for filtered topics.
+		// We already logged that we're skipping the topic in Collect(),
+		// so there's no need to log it for every consumer.
+		if len(c.topics) > 0 && !stringInSlice(topicName, c.topics) {
+			continue
+		}
+		for partitionID, partitionOffset := range topicParts {
+			// kafka_consumers_offsets{consumer="name",topic="name",partition="num"} 1234567890
+			ch <- prometheus.MustNewConstMetric(
+				c.metrics.consumersOffsets,
+				prometheus.CounterValue, float64(partitionOffset),
+				consumer.Name, topicName, fmt.Sprint(partitionID),
+			)
+		}
+	}
+}
