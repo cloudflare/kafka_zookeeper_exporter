@@ -21,7 +21,7 @@ Number of partitions configured for given topic.
 
 ### kafka_topic_partition_replica_count
 
-Number of replicas configured for given topic.
+Number of replicas configured for given partition.
 
 ### kafka_topic_partition_leader
 
@@ -50,6 +50,11 @@ The last offset consumed for a given (consumer, topic, partition).
 
 This will only show metrics for legacy consumers that still store their offsets
 in Zookeeper.
+
+### kafka_zookeeper_scrape_error
+
+Will have value `1` if there was an error retrieving or processing any of the
+data for the current scrape. `0` otherwise.
 
 ## Building
 
