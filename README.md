@@ -21,7 +21,7 @@ Number of partitions configured for given topic.
 
 ### kafka_topic_partition_replica_count
 
-Number of replicas configured for given topic.
+Number of replicas configured for given partition.
 
 ### kafka_topic_partition_leader
 
@@ -44,6 +44,18 @@ leader.
 This metric will have value `1` for the broker that is currently the cluster
 controller.
 
+### kafka_consumers_offsets
+
+The last offset consumed for a given (consumer, topic, partition).
+
+This will only show metrics for legacy consumers that still store their offsets
+in Zookeeper.
+
+### kafka_zookeeper_scrape_error
+
+Will have value `1` if there was an error retrieving or processing any of the
+data for the current scrape. `0` otherwise.
+
 ## Building
 
     go get -u github.com/cloudflare/kafka_zookeeper_exporter
@@ -62,13 +74,19 @@ To see the list of avaiable flags run
 
 Send a request to collect metrics
 
-    curl localhost:9381/kafka?zookeeper=10.0.0.1:2181&chroot=/kafka/cluster&topics=mytopic1,mytopic2
+    curl localhost:9381/kafka?zookeeper=10.0.0.1:2181&chroot=/kafka/cluster&topic=mytopic1,mytopic2&consumer=myconsumer1,myconsumer2
 
 Where:
 
 * zookeeper - required, address of the ZooKeeper used for Kafka, can be multiple addresses separated by comma
 * chroot - path inside ZooKeeper where Kafka cluster data is stored. Has to be omitted if Kafka resides in the root of ZooKeeper.
-* topics - optional, list of topics to collect metrics for, if empty or missing then all topics will be collected
+* topic - optional, list of topics to collect metrics for.
+  If empty or missing then all topics will be collected.
+* consumer - optional, list of consumers to collect metrics for.
+  If empty or missing then all consumers will be collected.
+
+If both topic and consumer are non-empty, then metrics where both are relevant
+will only be collected if they match both.
 
 ## Prometheus configuration
 

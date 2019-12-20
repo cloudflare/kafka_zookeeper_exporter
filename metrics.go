@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 
@@ -14,9 +13,8 @@ import (
 func (c *collector) clusterMetrics(ch chan<- prometheus.Metric, client *kazoo.Kazoo) {
 	controller, err := client.Controller()
 	if err != nil {
-		msg := fmt.Sprintf("Error collecting cluster controller broker ID: %s", err)
-		log.Error(msg)
-		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("zookeeper_controller_id_error", msg, nil, nil), err)
+		log.Errorf("Error collecting cluster controller broker ID: %s", err)
+		c.zkErr = 1
 		return
 	}
 
@@ -32,11 +30,11 @@ func (c *collector) topicMetrics(ch chan<- prometheus.Metric, topic *kazoo.Topic
 	// per partition metrics
 	partitions, err := topic.Partitions()
 	if err != nil {
-		msg := fmt.Sprintf("Error collecting list of partitions on '%s' topics: %s", topic.Name, err)
-		log.Errorf(msg)
-		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("zookeeper_topic_partitions_error", msg, nil, nil), err)
+		log.Errorf("Error collecting list of partitions on '%s' topics: %s", topic.Name, err)
+		c.zkErr = 1
 		return
 	}
+
 	// kafka_topic_partition_count{topic="name"} 13
 	ch <- prometheus.MustNewConstMetric(
 		c.metrics.topicPartitions,
@@ -53,7 +51,6 @@ func (c *collector) topicMetrics(ch chan<- prometheus.Metric, topic *kazoo.Topic
 		}(ch, topic, partition)
 	}
 	wg.Wait()
-
 }
 
 // called from topicMetrics() to extract per partition metrics
@@ -67,47 +64,71 @@ func (c *collector) partitionMetrics(ch chan<- prometheus.Metric, topic *kazoo.T
 
 	leader, err := partition.Leader()
 	if err != nil {
-		msg := fmt.Sprintf("Error fetching partition leader for partition %d on topic '%s': %s", partition.ID, topic.Name, err)
-		log.Errorf(msg)
-		ch <- prometheus.NewInvalidMetric(c.metrics.partitionLeader, errors.New(msg))
-		return
-	}
-	// kafka_topic_partition_leader_is_preferred{topic="name", partition="1", replica="10001"} 1
-	ch <- prometheus.MustNewConstMetric(
-		c.metrics.partitionLeader,
-		prometheus.GaugeValue, 1,
-		topic.Name, fmt.Sprint(partition.ID), fmt.Sprint(leader),
-	)
-
-	isr, err := partition.ISR()
-	if err != nil {
-		msg := fmt.Sprintf("Error fetching partition ISR information for partition %d on topic '%s': %s", partition.ID, topic.Name, err)
-		log.Errorf(msg)
-		ch <- prometheus.NewInvalidMetric(c.metrics.partitionISR, errors.New(msg))
-		return
-	}
-	for _, replica := range partition.Replicas {
-		var inSync float64
-		if int32InSlice(replica, isr) {
-			inSync = 1
-		}
-		// kafka_topic_partition_replica_in_sync{topic="name", partition="1", replica="10002"} 0
+		log.Errorf("Error fetching partition leader for partition %d on topic '%s': %s", partition.ID, topic.Name, err)
+		c.zkErr = 1
+	} else {
+		// kafka_topic_partition_leader{topic="name", partition="1", replica="10001"} 1
 		ch <- prometheus.MustNewConstMetric(
-			c.metrics.partitionISR,
-			prometheus.GaugeValue, inSync,
-			topic.Name, fmt.Sprint(partition.ID), fmt.Sprint(replica),
+			c.metrics.partitionLeader,
+			prometheus.GaugeValue, 1,
+			topic.Name, fmt.Sprint(partition.ID), fmt.Sprint(leader),
+		)
+
+		var isPreferred float64
+		if leader == partition.PreferredReplica() {
+			isPreferred = 1
+		}
+		// kafka_topic_partition_leader_is_preferred{topic="name", partition="1"} 1
+		ch <- prometheus.MustNewConstMetric(
+			c.metrics.partitionUsesPreferredReplica,
+			prometheus.GaugeValue, isPreferred,
+			topic.Name, fmt.Sprint(partition.ID),
 		)
 	}
 
-	preferred := partition.PreferredReplica()
-	var isPreferred float64
-	if leader == preferred {
-		isPreferred = 1
+	isr, err := partition.ISR()
+	if err != nil {
+		log.Errorf("Error fetching partition ISR information for partition %d on topic '%s': %s", partition.ID, topic.Name, err)
+		c.zkErr = 1
+	} else {
+		for _, replica := range partition.Replicas {
+			var inSync float64
+			if int32InSlice(replica, isr) {
+				inSync = 1
+			}
+			// kafka_topic_partition_replica_in_sync{topic="name", partition="1", replica="10002"} 0
+			ch <- prometheus.MustNewConstMetric(
+				c.metrics.partitionISR,
+				prometheus.GaugeValue, inSync,
+				topic.Name, fmt.Sprint(partition.ID), fmt.Sprint(replica),
+			)
+		}
 	}
-	// kafka_topic_partition_leader_is_preferred{topic="name", partition="1"} 1
-	ch <- prometheus.MustNewConstMetric(
-		c.metrics.partitionUsesPreferredReplica,
-		prometheus.GaugeValue, isPreferred,
-		topic.Name, fmt.Sprint(partition.ID),
-	)
+}
+
+func (c *collector) consumerMetrics(ch chan<- prometheus.Metric, consumer *kazoo.Consumergroup) {
+	offsets, err := consumer.FetchAllOffsets()
+	if err != nil {
+		log.Errorf("Error collecting offset for consumer %s: %s", consumer.Name, err)
+		c.zkErr = 1
+		// Nothing left to do if we didn't get offsets
+		return
+	}
+
+	for topicName, topicParts := range offsets {
+		// Don't emit metrics for filtered topics.
+		// We already logged that we're skipping the topic in Collect(),
+		// so there's no need to log it for every consumer.
+		if len(c.topics) > 0 && !stringInSlice(topicName, c.topics) {
+			continue
+		}
+		for partitionID, partitionOffset := range topicParts {
+			// kafka_consumers_offsets{consumer="name",topic="name",partition="num"} 1234567890
+			ch <- prometheus.MustNewConstMetric(
+				c.metrics.consumersOffsets,
+				prometheus.CounterValue, float64(partitionOffset),
+				consumer.Name, topicName, fmt.Sprint(partitionID),
+			)
+		}
+	}
 }
