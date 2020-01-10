@@ -6,7 +6,7 @@ build:
   tagPolicy:
     gitCommit: {}
   artifacts:
-    - image: ippendigital/kafka_zookeeper_exporter
+    - image: ippendigital/kafka-zookeeper-exporter
 profiles:
   - name: dev
     deploy:
