@@ -15,6 +15,7 @@ import (
 
 const (
 	timeout = 10 * time.Second
+	addr = "0.0.0.0:6900"
 )
 
 func healthCheck(w http.ResponseWriter, _ *http.Request) {
@@ -39,7 +40,7 @@ func main() {
 	prometheus.MustRegister(
 		newCollector(strings.Split(broker, ","), chroot, timeout))
 	s := &http.Server{
-		Addr:         "0.0.0.0:6900",
+		Addr:         addr,
 		ReadTimeout:  timeout,
 		WriteTimeout: timeout,
 	}
