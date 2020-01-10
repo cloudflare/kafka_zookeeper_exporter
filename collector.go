@@ -103,12 +103,10 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		Chroot:  c.chroot,
 		Timeout: c.timeout,
 	}
-	log.Debugf("Connecting to %s, chroot=%s timeout=%s", c.zookeeper, config.Chroot, config.Timeout)
+	log.Infof("Connecting to %s, chroot=%s timeout=%s", c.zookeeper, config.Chroot, config.Timeout)
 	client, err := kazoo.NewKazoo(c.zookeeper, &config)
 	if err != nil {
 		log.Errorf("Connection error: %s", err)
-		// If we can't connect, there's nothing left
-		// to do but return the error to the client
 		ch <- prometheus.MustNewConstMetric(
 			c.metrics.zookeeperScrapeError,
 			prometheus.GaugeValue, 1)
