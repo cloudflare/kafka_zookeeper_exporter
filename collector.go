@@ -114,7 +114,11 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 			prometheus.GaugeValue, 1)
 		return
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			log.Error("ZooKeeper client connection was not closed successfully.")
+		}
+	}()
 	c.clusterMetrics(ch, client)
 
 	wg := sync.WaitGroup{}
