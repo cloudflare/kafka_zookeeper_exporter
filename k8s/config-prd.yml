@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-zookeeper-exporter
+data:
+  broker: "https://graph.taas.staging.ippen.space"
+  chroot: "/kafka"
