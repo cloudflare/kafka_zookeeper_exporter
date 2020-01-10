@@ -15,7 +15,7 @@ import (
 
 const (
 	timeout = 10 * time.Second
-	addr = "0.0.0.0:6900"
+	addr    = "0.0.0.0:6900"
 )
 
 func healthCheck(w http.ResponseWriter, _ *http.Request) {
