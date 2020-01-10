@@ -39,7 +39,7 @@ func main() {
 	prometheus.MustRegister(
 		newCollector(strings.Split(broker, ","), chroot, timeout))
 	s := &http.Server{
-		Addr:         ":6900",
+		Addr:         "0.0.0.0:6900",
 		ReadTimeout:  timeout,
 		WriteTimeout: timeout,
 	}
