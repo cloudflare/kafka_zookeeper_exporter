@@ -133,7 +133,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	}
 	consumers, err := client.Consumergroups()
 	if err != nil {
-		log.Error("Error collecting list of consumers: %s", err)
+		log.Errorf("Error collecting list of consumers: %s", err)
 		c.zkErr = 1
 	} else {
 		for _, consumer := range consumers {
