@@ -1,12 +1,10 @@
 package main
 
 import (
-	"strings"
+	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 
 	kazoo "github.com/wvanbergen/kazoo-go"
 )
@@ -23,22 +21,18 @@ type zkMetrics struct {
 }
 
 type collector struct {
-	zookeeper string
+	zookeeper []string
 	chroot    string
-	topics    []string
-	consumers []string
 	timeout   time.Duration
-	zkErr     int32
+	zkErr     int
 	metrics   zkMetrics
 }
 
-func newCollector(zookeeper string, chroot string, topics []string, consumers []string) *collector {
+func newCollector(zookeeper []string, chroot string, timeout time.Duration) *collector {
 	return &collector{
 		zookeeper: zookeeper,
 		chroot:    chroot,
-		topics:    topics,
-		consumers: consumers,
-		timeout:   *zkTimeout,
+		timeout:   timeout,
 		zkErr:     0,
 		metrics: zkMetrics{
 			topicPartitions: prometheus.NewDesc(
@@ -109,59 +103,47 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		Chroot:  c.chroot,
 		Timeout: c.timeout,
 	}
-
-	log.Debugf("Connecting to %s, chroot=%s timeout=%s", c.zookeeper, config.Chroot, config.Timeout)
-	client, err := kazoo.NewKazoo(strings.Split(c.zookeeper, ","), &config)
+	log.Debug("Connecting to %s, chroot=%s timeout=%s", c.zookeeper, config.Chroot, config.Timeout)
+	client, err := kazoo.NewKazoo(c.zookeeper, &config)
 	if err != nil {
 		log.Errorf("Connection error: %s", err)
-		// If we can't connect, there's nothing left to do but return the error to the client
-		ch <- prometheus.MustNewConstMetric(c.metrics.zookeeperScrapeError, prometheus.GaugeValue, 1)
+		// If we can't connect, there's nothing left
+		// to do but return the error to the client
+		ch <- prometheus.MustNewConstMetric(
+			c.metrics.zookeeperScrapeError,
+			prometheus.GaugeValue, 1)
 		return
 	}
 	defer client.Close()
-
 	c.clusterMetrics(ch, client)
 
 	wg := sync.WaitGroup{}
 	topics, err := client.Topics()
 	if err != nil {
-		log.Errorf("Error collecting list of topics: %s", err)
+		log.Error("Error collecting list of topics: %s", err)
 		c.zkErr = 1
 	} else {
 		for _, topic := range topics {
-			if len(c.topics) > 0 && !stringInSlice(topic.Name, c.topics) {
-				// skip topic if it's not on the list of topic to collect
-				log.Debugf("Skipping topic '%s', not in list: %s [%d]", topic.Name, c.topics, len(c.topics))
-			} else {
-				wg.Add(1)
-				go func(t *kazoo.Topic) {
-					defer wg.Done()
-					c.topicMetrics(ch, t)
-				}(topic)
-			}
+			wg.Add(1)
+			go func(t *kazoo.Topic) {
+				defer wg.Done()
+				c.topicMetrics(ch, t)
+			}(topic)
 		}
 	}
-
 	consumers, err := client.Consumergroups()
 	if err != nil {
-		log.Errorf("Error collecting list of consumers: %s", err)
+		log.Error("Error collecting list of consumers: %s", err)
 		c.zkErr = 1
 	} else {
 		for _, consumer := range consumers {
-			if len(c.consumers) > 0 && !stringInSlice(consumer.Name, c.consumers) {
-				// skip consumer if it's not on the list of consumers to collect
-				log.Debugf("Skipping consumer '%s', not in list: %s [%d]", consumer.Name, c.consumers, len(c.consumers))
-			} else {
-				wg.Add(1)
-				go func(cg *kazoo.Consumergroup) {
-					defer wg.Done()
-					c.consumerMetrics(ch, cg)
-				}(consumer)
-			}
+			wg.Add(1)
+			go func(cg *kazoo.Consumergroup) {
+				defer wg.Done()
+				c.consumerMetrics(ch, cg)
+			}(consumer)
 		}
 	}
-
 	wg.Wait()
-
 	ch <- prometheus.MustNewConstMetric(c.metrics.zookeeperScrapeError, prometheus.GaugeValue, float64(c.zkErr))
 }

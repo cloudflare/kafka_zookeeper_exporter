@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-zookeeper-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-zookeeper-exporter
+  revisionHistoryLimit: 5
+  progressDeadlineSeconds: 60
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '6900'
+      labels:
+        app: kafka-zookeeper-exporter
+    spec:
+      containers:
+        - name: kafka-zookeeper-exporter
+          image: ippendigital/kafka-zookeeper-exporter
+          imagePullPolicy: Always
+          resources:
+            limits:
+              memory: "20Mi"
+          ports:
+            - containerPort: 6900
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 6900
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          env:
+            - name: ZK_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: kafka-zookeeper-exporter
+                  key: brokers
+            - name: ZK_CHROOT
+              valueFrom:
+                configMapKeyRef:
+                  name: kafka-zookeeper-exporter
+                  key: chroot

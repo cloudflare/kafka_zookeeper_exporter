@@ -1,0 +1,103 @@
+name: Kafka ZooKeeper Exporter
+on:
+  push:
+    branches:
+      - master
+      - develop
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13.x
+      - name: Checkout repository
+        uses: actions/checkout@v1
+      - name: docker login
+        run: docker login --username=${{ secrets.DOCKER_USER }} --password=${{ secrets.DOCKER_USER_PASSWORD }}
+      - name: Install skaffold locally
+        run: |
+          curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64
+          chmod +x skaffold
+          sudo mv skaffold /usr/local/bin
+      - name: Lint, test & compile the Go binary
+        env:
+          GO111MODULE: on
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          go get golang.org/x/lint/golint
+          go get github.com/securego/gosec/cmd/gosec
+          go get honnef.co/go/tools/cmd/staticcheck
+          go get github.com/gordonklaus/ineffassign
+          go get github.com/kisielk/errcheck
+          golint ./...
+          go test -race ./...
+          go vet ./...
+          gosec ./...
+          staticcheck ./...
+          ineffassign ./...
+          errcheck ./...
+          go build -o kafka_zookeeper_exporter -ldflags "-linkmode external -extldflags -static" -a main.go
+      - name: Build docker image
+        run: skaffold build --quiet > build.out
+      - name: Save build file for deployment jobs
+        uses: actions/upload-artifact@v1
+        with:
+          name: skaffold
+          path: build.out
+  deploy_production:
+    if: github.ref == 'refs/heads/master'
+    needs: build
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v1
+      - name: Configure AWS Credentials for Production
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+      - name: Connect to Kubernetes
+        run: aws eks update-kubeconfig --region eu-central-1 --name production
+      - name: Install skaffold locally
+        run: |
+          curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64
+          chmod +x skaffold
+          sudo mv skaffold /usr/local/bin
+      - name: Download skaffold build file
+        uses: actions/download-artifact@v1
+        with:
+          name: skaffold
+      - name: Deploy to production
+        run: skaffold deploy --status-check -a skaffold/build.out --profile prod
+  deploy_development:
+    if: github.ref == 'refs/heads/develop'
+    needs: build
+    name: Deploy Development
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v1
+      - name: Configure AWS Credentials for Development
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+      - name: Connect to Kubernetes
+        run: aws eks update-kubeconfig --region eu-west-1 --name staging
+      - name: Install skaffold locally
+        run: |
+          curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64
+          chmod +x skaffold
+          sudo mv skaffold /usr/local/bin
+      - name: Download skaffold build file
+        uses: actions/download-artifact@v1
+        with:
+          name: skaffold
+      - name: Deploy to development
+        run: skaffold deploy --status-check -a skaffold/build.out --profile dev
