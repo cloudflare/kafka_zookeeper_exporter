@@ -30,9 +30,6 @@ func main() {
 	})
 	broker := os.Getenv("ZK_BROKER")
 	chroot := os.Getenv("ZK_CHROOT")
-
-	broker = "127.0.0.1:2181"
-	chroot = "/"
 	if len(broker) == 0 {
 		log.Fatal("Required list of ZooKeeper brokers not available.")
 	} else if len(chroot) == 0 {
