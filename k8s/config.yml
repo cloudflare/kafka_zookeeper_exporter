@@ -4,4 +4,4 @@ metadata:
   name: kafka-zookeeper-exporter
 data:
   broker: "z-1.staging-graph-kafka.byi3n6.c4.kafka.eu-west-1.amazonaws.com:2181,z-2.staging-graph-kafka.byi3n6.c4.kafka.eu-west-1.amazonaws.com:2181,z-3.staging-graph-kafka.byi3n6.c4.kafka.eu-west-1.amazonaws.com:2181"
-  chroot: "/brokers"
+  chroot: "/"
