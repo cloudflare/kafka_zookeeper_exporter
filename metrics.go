@@ -12,7 +12,7 @@ import (
 func (c *collector) clusterMetrics(ch chan<- prometheus.Metric, client *kazoo.Kazoo) {
 	controller, err := client.Controller()
 	if err != nil {
-		log.Error("Error collecting cluster controller broker ID: %s", err)
+		log.Errorf("Error collecting cluster controller broker ID: %s", err)
 		c.zkErr = 1
 		return
 	}
@@ -26,7 +26,7 @@ func (c *collector) clusterMetrics(ch chan<- prometheus.Metric, client *kazoo.Ka
 func (c *collector) topicMetrics(ch chan<- prometheus.Metric, topic *kazoo.Topic) {
 	partitions, err := topic.Partitions()
 	if err != nil {
-		log.Error("Error collecting list of partitions on '%s' topics: %s", topic.Name, err)
+		log.Errorf("Error collecting list of partitions on '%s' topics: %s", topic.Name, err)
 		c.zkErr = 1
 		return
 	}
@@ -54,7 +54,7 @@ func (c *collector) partitionMetrics(ch chan<- prometheus.Metric, topic *kazoo.T
 	)
 	leader, err := partition.Leader()
 	if err != nil {
-		log.Error("Error fetching partition leader for partition %d on topic '%s': %s", partition.ID, topic.Name, err)
+		log.Errorf("Error fetching partition leader for partition %d on topic '%s': %s", partition.ID, topic.Name, err)
 		c.zkErr = 1
 	} else {
 		ch <- prometheus.MustNewConstMetric(
@@ -66,7 +66,6 @@ func (c *collector) partitionMetrics(ch chan<- prometheus.Metric, topic *kazoo.T
 		if leader == partition.PreferredReplica() {
 			isPreferred = 1
 		}
-		// kafka_topic_partition_leader_is_preferred{topic="name", partition="1"} 1
 		ch <- prometheus.MustNewConstMetric(
 			c.metrics.partitionUsesPreferredReplica,
 			prometheus.GaugeValue, isPreferred,
@@ -75,7 +74,7 @@ func (c *collector) partitionMetrics(ch chan<- prometheus.Metric, topic *kazoo.T
 	}
 	_, err = partition.ISR()
 	if err != nil {
-		log.Error("Error fetching partition ISR information for partition %d on topic '%s': %s", partition.ID, topic.Name, err)
+		log.Errorf("Error fetching partition ISR information for partition %d on topic '%s': %s", partition.ID, topic.Name, err)
 		c.zkErr = 1
 	} else {
 		for _, replica := range partition.Replicas {
@@ -92,7 +91,7 @@ func (c *collector) partitionMetrics(ch chan<- prometheus.Metric, topic *kazoo.T
 func (c *collector) consumerMetrics(ch chan<- prometheus.Metric, consumer *kazoo.Consumergroup) {
 	offsets, err := consumer.FetchAllOffsets()
 	if err != nil {
-		log.Error("Error collecting offset for consumer %s: %s", consumer.Name, err)
+		log.Errorf("Error collecting offset for consumer %s: %s", consumer.Name, err)
 		c.zkErr = 1
 		return
 	}

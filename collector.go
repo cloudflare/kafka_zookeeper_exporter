@@ -103,7 +103,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		Chroot:  c.chroot,
 		Timeout: c.timeout,
 	}
-	log.Debug("Connecting to %s, chroot=%s timeout=%s", c.zookeeper, config.Chroot, config.Timeout)
+	log.Debugf("Connecting to %s, chroot=%s timeout=%s", c.zookeeper, config.Chroot, config.Timeout)
 	client, err := kazoo.NewKazoo(c.zookeeper, &config)
 	if err != nil {
 		log.Errorf("Connection error: %s", err)
@@ -120,7 +120,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
 	topics, err := client.Topics()
 	if err != nil {
-		log.Error("Error collecting list of topics: %s", err)
+		log.Errorf("Error collecting list of topics: %s", err)
 		c.zkErr = 1
 	} else {
 		for _, topic := range topics {
