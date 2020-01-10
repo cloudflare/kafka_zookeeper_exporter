@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	timeout = 10 * time.Second
+	timeout = 20 * time.Second
 	addr    = "0.0.0.0:6900"
 )
 
